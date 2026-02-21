@@ -2,7 +2,7 @@
   "name": "siyuan-plugin-kanban",
   "author": "Hao Zhou",
   "url": "https://github.com/zhouhao/siyuan-plugin-kanban",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "minAppVersion": "3.0.0",
   "backends": ["all"],
   "frontends": ["all"],
