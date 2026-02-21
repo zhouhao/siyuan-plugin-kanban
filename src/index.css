@@ -1,0 +1,538 @@
+/* Siyuan Kanban Plugin Styles */
+
+/* 主题变量 */
+:root {
+    --kanban-bg: var(--b3-theme-background, #f5f5f5);
+    --kanban-surface: var(--b3-theme-surface, #fff);
+    --kanban-text: var(--b3-theme-on-background, #333);
+    --kanban-text-secondary: var(--b3-theme-on-surface-light, #666);
+    --kanban-border: var(--b3-theme-border, #e0e0e0);
+    --kanban-primary: var(--b3-theme-primary, #2196F3);
+    --kanban-primary-light: var(--b3-theme-primary-light, #E3F2FD);
+    --kanban-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --kanban-radius: 8px;
+    --kanban-column-width: 280px;
+    --kanban-task-bg: var(--b3-theme-surface, #fff);
+    --kanban-hover: var(--b3-theme-surface-hover, #f0f0f0);
+}
+
+/* 暗色主题 */
+[data-theme-mode="dark"] {
+    --kanban-bg: var(--b3-theme-background, #1e1e1e);
+    --kanban-surface: var(--b3-theme-surface, #2d2d2d);
+    --kanban-text: var(--b3-theme-on-background, #e0e0e0);
+    --kanban-text-secondary: var(--b3-theme-on-surface-light, #999);
+    --kanban-border: var(--b3-theme-border, #404040);
+    --kanban-primary-light: var(--b3-theme-primary-light, #1a3a5c);
+    --kanban-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --kanban-task-bg: var(--b3-theme-surface, #2d2d2d);
+    --kanban-hover: var(--b3-theme-surface-hover, #3d3d3d);
+}
+
+/* 面板容器 */
+.kanban-panel {
+    width: 100%;
+    height: 100%;
+    background: var(--kanban-bg);
+    display: flex;
+    flex-direction: column;
+    font-family: var(--b3-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+/* 面板头部 */
+.kanban-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background: var(--kanban-surface);
+    border-bottom: 1px solid var(--kanban-border);
+    flex-shrink: 0;
+}
+
+.kanban-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--kanban-text);
+}
+
+.kanban-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+/* 按钮样式 */
+.kanban-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: var(--kanban-primary);
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.kanban-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.kanban-btn-close {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--kanban-text-secondary);
+    cursor: pointer;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.kanban-btn-close:hover {
+    background: var(--kanban-hover);
+    color: var(--kanban-text);
+}
+
+/* 看板主体 */
+.kanban-board {
+    flex: 1;
+    display: flex;
+    gap: 16px;
+    padding: 24px;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* 列样式 */
+.kanban-column {
+    flex-shrink: 0;
+    width: var(--kanban-column-width);
+    background: var(--kanban-surface);
+    border-radius: var(--kanban-radius);
+    border: 1px solid var(--kanban-border);
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+}
+
+.column-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--kanban-border);
+    gap: 8px;
+}
+
+.column-title {
+    flex: 1;
+    font-weight: 600;
+    color: var(--kanban-text);
+    font-size: 14px;
+}
+
+.column-count {
+    background: var(--kanban-primary-light);
+    color: var(--kanban-primary);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.column-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.column-header:hover .column-actions {
+    opacity: 1;
+}
+
+.column-action-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--kanban-text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.column-action-btn:hover {
+    background: var(--kanban-hover);
+    color: var(--kanban-text);
+}
+
+.delete-column-btn:hover {
+    background: #ffebee;
+    color: #f44336;
+}
+
+/* 任务列表容器 */
+.column-tasks {
+    flex: 1;
+    padding: 12px;
+    overflow-y: auto;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.column-tasks.drag-over {
+    background: var(--kanban-primary-light);
+    border: 2px dashed var(--kanban-primary);
+    border-radius: 4px;
+}
+
+/* 任务卡片 */
+.kanban-task {
+    background: var(--kanban-task-bg);
+    border: 1px solid var(--kanban-border);
+    border-radius: 6px;
+    padding: 12px;
+    cursor: grab;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.kanban-task:hover {
+    box-shadow: var(--kanban-shadow);
+    transform: translateY(-2px);
+}
+
+.kanban-task.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+}
+
+.task-title {
+    font-weight: 500;
+    color: var(--kanban-text);
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+.task-description {
+    font-size: 12px;
+    color: var(--kanban-text-secondary);
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.task-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.task-deadline {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.deadline-normal {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.deadline-soon {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+.deadline-urgent {
+    background: #fce4ec;
+    color: #c62828;
+}
+
+.deadline-overdue {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+}
+
+.task-created {
+    font-size: 11px;
+    color: var(--kanban-text-secondary);
+}
+
+.task-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.kanban-task:hover .task-actions {
+    opacity: 1;
+}
+
+.task-action-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 4px;
+    background: var(--kanban-surface);
+    color: var(--kanban-text-secondary);
+    cursor: pointer;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.task-action-btn:hover {
+    background: var(--kanban-hover);
+    color: var(--kanban-text);
+}
+
+.delete-task-btn:hover {
+    background: #ffebee;
+    color: #f44336;
+}
+
+/* 添加任务按钮 */
+.add-task-btn {
+    margin: 12px;
+    padding: 10px;
+    border: 2px dashed var(--kanban-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--kanban-text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.add-task-btn:hover {
+    border-color: var(--kanban-primary);
+    color: var(--kanban-primary);
+    background: var(--kanban-primary-light);
+}
+
+/* 对话框样式 */
+.kanban-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.kanban-dialog {
+    background: var(--kanban-surface);
+    border-radius: var(--kanban-radius);
+    width: 90%;
+    max-width: 480px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--kanban-border);
+}
+
+.dialog-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--kanban-text);
+}
+
+.dialog-close-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--kanban-text-secondary);
+    cursor: pointer;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.dialog-close-btn:hover {
+    background: var(--kanban-hover);
+    color: var(--kanban-text);
+}
+
+.dialog-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--kanban-text);
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--kanban-border);
+    border-radius: 6px;
+    background: var(--kanban-bg);
+    color: var(--kanban-text);
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--kanban-primary);
+    box-shadow: 0 0 0 3px var(--kanban-primary-light);
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--kanban-border);
+    background: var(--kanban-bg);
+}
+
+.dialog-footer .cancel-btn {
+    background: var(--kanban-hover);
+    color: var(--kanban-text);
+}
+
+.dialog-footer .confirm-btn {
+    background: var(--kanban-primary);
+    color: white;
+}
+
+/* 暗色主题特定调整 */
+[data-theme-mode="dark"] .deadline-normal {
+    background: #1b5e20;
+    color: #a5d6a7;
+}
+
+[data-theme-mode="dark"] .deadline-soon {
+    background: #e65100;
+    color: #ffcc80;
+}
+
+[data-theme-mode="dark"] .deadline-urgent {
+    background: #b71c1c;
+    color: #ffcdd2;
+}
+
+[data-theme-mode="dark"] .deadline-overdue {
+    background: #880e4f;
+    color: #f48fb1;
+    border-color: #c2185b;
+}
+
+/* 滚动条样式 */
+.column-tasks::-webkit-scrollbar,
+.kanban-board::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.column-tasks::-webkit-scrollbar-track,
+.kanban-board::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.column-tasks::-webkit-scrollbar-thumb,
+.kanban-board::-webkit-scrollbar-thumb {
+    background: var(--kanban-border);
+    border-radius: 3px;
+}
+
+.column-tasks::-webkit-scrollbar-thumb:hover,
+.kanban-board::-webkit-scrollbar-thumb:hover {
+    background: var(--kanban-text-secondary);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    :root {
+        --kanban-column-width: 260px;
+    }
+
+    .kanban-header {
+        padding: 12px 16px;
+    }
+
+    .kanban-board {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .kanban-dialog {
+        width: 95%;
+        margin: 16px;
+    }
+}
+
+/* 图标样式 - 使用 SVG 内联 */
+.kanban-panel .b3-icons--iconBoard {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='9' y1='3' x2='9' y2='21'%3E%3C/line%3E%3Cline x1='15' y1='3' x2='15' y2='21'%3E%3C/line%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+}
