@@ -369,7 +369,9 @@ class KanbanPlugin extends Plugin {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const boardId = e.target.closest('.kanban-dock-item').dataset.boardId;
-                siyuanConfirm("⚠️", this.i18n.confirmDeleteBoard, () => {
+                const board = this.boardIndex.boards.find(b => b.id === boardId);
+                const msg = this.i18n.confirmDeleteBoard.replace('${name}', board ? board.name : '');
+                siyuanConfirm("⚠️", msg, () => {
                     this.deleteBoard(boardId);
                 });
             });

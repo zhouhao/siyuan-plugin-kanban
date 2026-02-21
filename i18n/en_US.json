@@ -24,6 +24,6 @@
     "enterBoardName": "Enter board name",
     "renameBoard": "Rename",
     "deleteBoard": "Delete",
-    "confirmDeleteBoard": "Are you sure you want to delete this board? All tasks will be lost!",
+    "confirmDeleteBoard": "Are you sure you want to delete \"${name}\"? All tasks will be lost!",
     "defaultBoardName": "My Kanban"
 }
