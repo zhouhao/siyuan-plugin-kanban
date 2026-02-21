@@ -197,6 +197,20 @@ class KanbanPlugin extends Plugin {
     async deleteBoard(boardId) {
         const idx = this.boardIndex.boards.findIndex(b => b.id === boardId);
         if (idx === -1) return;
+
+        // Close any open tabs for this board
+        try {
+            const openedTabs = this.getOpenedTab();
+            const kanbanTabs = openedTabs[TAB_TYPE];
+            if (kanbanTabs) {
+                kanbanTabs.forEach(custom => {
+                    if (custom.data && custom.data.boardId === boardId) {
+                        custom.tab.parent.removeTab(custom.tab.id);
+                    }
+                });
+            }
+        } catch (e) { /* ignore on mobile or if API unavailable */ }
+
         this.boardIndex.boards.splice(idx, 1);
         this.boards.delete(boardId);
         try { await this.removeData(boardId); } catch (e) { /* ignore */ }
