@@ -20,5 +20,11 @@
     "confirmDeleteColumn": "确定要删除这一列吗？",
     "confirmReset": "确定要重置看板吗？这将清除所有数据！",
     "enterColumnName": "请输入列名称",
-    "openKanban": "打开看板"
+    "openKanban": "打开看板",
+    "newBoard": "新建看板",
+    "enterBoardName": "请输入看板名称",
+    "renameBoard": "重命名",
+    "deleteBoard": "删除",
+    "confirmDeleteBoard": "确定要删除这个看板吗？所有任务都将丢失！",
+    "defaultBoardName": "我的看板"
 }

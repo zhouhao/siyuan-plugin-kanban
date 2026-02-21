@@ -1,23 +1,16 @@
-/**
- * Siyuan Kanban Plugin
- * 一个简单的看板插件
- */
-
-// 导入样式
 import "./index.css";
+import { Plugin, openTab, Menu, getFrontend, adaptHotkey, confirm as siyuanConfirm, Dialog, showMessage } from "siyuan";
 
-// 导入 Plugin 类和 openTab - 由 Siyuan 应用在运行时通过全局 siyuan 对象提供
-import { Plugin, openTab } from "siyuan";
-
-const STORAGE_NAME = "kanban";
+const STORAGE_BOARDS_INDEX = "boards-index";
 const TAB_TYPE = "kanban_tab";
+const DOCK_TYPE = "kanban_dock";
 
 class KanbanPlugin extends Plugin {
-    // 不要自定义 constructor —— SiYuan 的 Plugin 基类需要接收 options 参数
-    // 所有初始化工作放在 onload() 中
 
     async onload() {
-        this.kanbanData = null;
+        this.boards = new Map();
+        this.boardIndex = { boards: [] };
+        this.isMobile = ["mobile", "browser-mobile"].includes(getFrontend());
         this.defaultColumns = [
             { id: 'todo', title: '待办', tasks: [] },
             { id: 'in-progress', title: '进行中', tasks: [] },
@@ -25,7 +18,7 @@ class KanbanPlugin extends Plugin {
             { id: 'done', title: '已完成', tasks: [] }
         ];
 
-        await this.loadKanbanData();
+        await this.migrateAndLoadIndex();
 
         try {
             this.addIcons(`<symbol id="iconKanban" viewBox="0 0 32 32">
@@ -41,61 +34,204 @@ class KanbanPlugin extends Plugin {
         this.customTab = this.addTab({
             type: TAB_TYPE,
             init() {
-                const panelElement = plugin.createKanbanPanel();
-                this.element.appendChild(panelElement);
-                plugin.bindDragEvents(panelElement);
+                const boardId = this.data && this.data.boardId;
+                if (!boardId) return;
+                const tabElement = this.element;
+                const mount = () => {
+                    const panelElement = plugin.createKanbanPanel(boardId);
+                    tabElement.appendChild(panelElement);
+                    plugin.bindDragEvents(panelElement);
+                };
+                if (plugin.boards.has(boardId)) {
+                    mount();
+                } else {
+                    plugin.loadBoardData(boardId).then(mount).catch(e => {
+                        console.error('Failed to load board:', e);
+                    });
+                }
             },
             destroy() {
-                console.log("Kanban tab destroyed");
+            }
+        });
+
+        this.addDock({
+            config: {
+                position: "LeftBottom",
+                size: { width: 220, height: 0 },
+                icon: "iconKanban",
+                title: this.i18n.kanban,
+                hotkey: "⌥⌘K",
+            },
+            data: {},
+            type: DOCK_TYPE,
+            init: (dock) => {
+                this.dockElement = dock.element;
+                this.renderDock();
+            },
+            destroy: () => {
+                this.dockElement = null;
             }
         });
 
         this.addCommand({
             langKey: "openKanban",
             hotkey: '⌘⇧K',
-            callback: () => this.openKanban()
+            callback: () => {
+                if (this.boardIndex.boards.length > 0) {
+                    this.openBoard(this.boardIndex.boards[0].id);
+                }
+            }
         });
 
         console.log('Kanban plugin loaded');
     }
 
     onLayoutReady() {
-        // 在布局准备好后添加顶栏按钮
         this.addMenuItem();
     }
 
-    async loadKanbanData() {
+    showPromptDialog(title, defaultValue, callback) {
+        const id = 'kanban-prompt-' + Date.now();
+        const dialog = new Dialog({
+            title,
+            content: `<div class="b3-dialog__content">
+                <input class="b3-text-field fn__block" id="${id}" value="${this.escapeHtml(defaultValue || '')}">
+            </div>
+            <div class="b3-dialog__action">
+                <button class="b3-button b3-button--cancel">${this.i18n.cancel}</button>
+                <div class="fn__space"></div>
+                <button class="b3-button b3-button--text">${this.i18n.confirm}</button>
+            </div>`,
+            width: this.isMobile ? "92vw" : "400px",
+        });
+        const inputEl = dialog.element.querySelector(`#${id}`);
+        const btns = dialog.element.querySelectorAll('.b3-button');
+        dialog.bindInput(inputEl, () => btns[1].click());
+        inputEl.focus();
+        inputEl.select();
+        btns[0].addEventListener('click', () => dialog.destroy());
+        btns[1].addEventListener('click', () => {
+            const val = inputEl.value.trim();
+            dialog.destroy();
+            if (val) callback(val);
+        });
+    }
+
+    // =========== Data Layer ===========
+
+    async migrateAndLoadIndex() {
         try {
-            const data = await this.loadData(STORAGE_NAME);
-            if (data && data.columns) {
-                this.kanbanData = data;
-            } else {
-                this.kanbanData = { columns: JSON.parse(JSON.stringify(this.defaultColumns)) };
-                await this.saveKanbanData();
+            const index = await this.loadData(STORAGE_BOARDS_INDEX);
+            if (index && index.boards && index.boards.length > 0) {
+                this.boardIndex = index;
+                return;
             }
-        } catch (e) {
-            console.error('Failed to load kanban data:', e);
-            this.kanbanData = { columns: JSON.parse(JSON.stringify(this.defaultColumns)) };
-            await this.saveKanbanData();
+        } catch (e) { /* no index yet */ }
+
+        try {
+            const oldData = await this.loadData("kanban");
+            if (oldData && oldData.columns) {
+                const boardId = 'board-' + Date.now();
+                this.boardIndex = {
+                    boards: [{ id: boardId, name: this.i18n.defaultBoardName, createdAt: Date.now() }]
+                };
+                this.boards.set(boardId, oldData);
+                await this.saveData(boardId, oldData);
+                await this.saveData(STORAGE_BOARDS_INDEX, this.boardIndex);
+                return;
+            }
+        } catch (e) { /* no old data */ }
+
+        const boardId = 'board-' + Date.now();
+        const defaultData = { columns: JSON.parse(JSON.stringify(this.defaultColumns)) };
+        this.boardIndex = {
+            boards: [{ id: boardId, name: this.i18n.defaultBoardName, createdAt: Date.now() }]
+        };
+        this.boards.set(boardId, defaultData);
+        await this.saveData(boardId, defaultData);
+        await this.saveData(STORAGE_BOARDS_INDEX, this.boardIndex);
+    }
+
+    async saveBoardIndex() {
+        await this.saveData(STORAGE_BOARDS_INDEX, this.boardIndex);
+    }
+
+    async loadBoardData(boardId) {
+        if (this.boards.has(boardId)) return this.boards.get(boardId);
+        try {
+            const data = await this.loadData(boardId);
+            if (data && data.columns) {
+                this.boards.set(boardId, data);
+                return data;
+            }
+        } catch (e) { /* fall through */ }
+        const defaultData = { columns: JSON.parse(JSON.stringify(this.defaultColumns)) };
+        this.boards.set(boardId, defaultData);
+        await this.saveData(boardId, defaultData);
+        return defaultData;
+    }
+
+    async saveBoardData(boardId) {
+        const data = this.boards.get(boardId);
+        if (data) {
+            await this.saveData(boardId, data);
         }
     }
 
-    async saveKanbanData() {
-        try {
-            await this.saveData(STORAGE_NAME, this.kanbanData);
-        } catch (e) {
-            console.error('Failed to save kanban data:', e);
+    getBoardData(boardId) {
+        return this.boards.get(boardId);
+    }
+
+    // =========== Board CRUD ===========
+
+    async createBoard(name) {
+        const boardId = 'board-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+        const boardData = { columns: JSON.parse(JSON.stringify(this.defaultColumns)) };
+        this.boards.set(boardId, boardData);
+        this.boardIndex.boards.push({ id: boardId, name, createdAt: Date.now() });
+        await this.saveData(boardId, boardData);
+        await this.saveBoardIndex();
+        this.refreshDock();
+        return boardId;
+    }
+
+    async renameBoard(boardId, newName) {
+        const board = this.boardIndex.boards.find(b => b.id === boardId);
+        if (board) {
+            board.name = newName;
+            await this.saveBoardIndex();
+            this.refreshDock();
         }
     }
+
+    async deleteBoard(boardId) {
+        const idx = this.boardIndex.boards.findIndex(b => b.id === boardId);
+        if (idx === -1) return;
+        this.boardIndex.boards.splice(idx, 1);
+        this.boards.delete(boardId);
+        try { await this.removeData(boardId); } catch (e) { /* ignore */ }
+        await this.saveBoardIndex();
+        this.refreshDock();
+    }
+
+    // =========== Top Bar Menu ===========
 
     addMenuItem() {
         try {
-            this.addTopBar({
+            const topBarElement = this.addTopBar({
                 icon: "iconKanban",
                 title: this.i18n.kanban,
                 position: "right",
                 callback: () => {
-                    this.openKanban();
+                    if (this.isMobile) {
+                        this.showBoardMenu();
+                    } else {
+                        let rect = topBarElement.getBoundingClientRect();
+                        if (rect.width === 0) {
+                            rect = document.querySelector("#barMore").getBoundingClientRect();
+                        }
+                        this.showBoardMenu(rect);
+                    }
                 }
             });
         } catch (e) {
@@ -103,50 +239,194 @@ class KanbanPlugin extends Plugin {
         }
     }
 
-    openKanban() {
+    showBoardMenu(rect) {
+        const menu = new Menu("kanbanBoardMenu");
+
+        this.boardIndex.boards.forEach(board => {
+            menu.addItem({
+                icon: "iconKanban",
+                label: board.name,
+                click: () => this.openBoard(board.id)
+            });
+        });
+
+        menu.addSeparator();
+
+        menu.addItem({
+            icon: "iconAdd",
+            label: this.i18n.newBoard,
+            click: () => {
+                this.showPromptDialog(this.i18n.newBoard, '', (name) => {
+                    this.createBoard(name).then(boardId => {
+                        this.openBoard(boardId);
+                    });
+                });
+            }
+        });
+
+        if (this.isMobile) {
+            menu.fullscreen();
+        } else if (rect) {
+            menu.open({ x: rect.right, y: rect.bottom, isLeft: true });
+        }
+    }
+
+    // =========== Tab ===========
+
+    openBoard(boardId) {
+        const board = this.boardIndex.boards.find(b => b.id === boardId);
+        if (!board) return;
         openTab({
             app: this.app,
             custom: {
                 icon: "iconKanban",
-                title: this.i18n.kanban,
-                data: {},
+                title: board.name,
+                data: { boardId },
                 id: this.name + TAB_TYPE
             },
         });
     }
 
-    createKanbanPanel() {
-        const panel = document.createElement('div');
-        panel.className = 'kanban-panel';
-        panel.innerHTML = `
-            <div class="kanban-header">
-                <div class="kanban-title">${this.i18n.kanban}</div>
-                <div class="kanban-actions">
-                    <button class="kanban-btn" id="add-column-btn">${this.i18n.addColumn}</button>
-                    <button class="kanban-btn" id="reset-board-btn">${this.i18n.resetBoard}</button>
+    // =========== Dock Sidebar ===========
+
+    renderDock() {
+        if (!this.dockElement) return;
+
+        if (this.isMobile) {
+            this.dockElement.innerHTML = `
+                <div class="toolbar toolbar--border toolbar--dark">
+                    <svg class="toolbar__icon"><use xlink:href="#iconKanban"></use></svg>
+                    <div class="toolbar__text">${this.i18n.kanban}</div>
+                </div>
+                <div class="fn__flex-1 kanban-dock-list">
+                    ${this.renderDockBoardList()}
+                </div>`;
+        } else {
+            this.dockElement.innerHTML = `
+                <div class="fn__flex-1 fn__flex-column">
+                    <div class="block__icons">
+                        <div class="block__logo">
+                            <svg class="block__logoicon"><use xlink:href="#iconKanban"></use></svg>
+                            ${this.i18n.kanban}
+                        </div>
+                        <span class="fn__flex-1 fn__space"></span>
+                        <span class="block__icon kanban-dock-add b3-tooltips b3-tooltips__sw" aria-label="${this.i18n.newBoard}">
+                            <svg><use xlink:href="#iconAdd"></use></svg>
+                        </span>
+                        <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}">
+                            <svg><use xlink:href="#iconMin"></use></svg>
+                        </span>
+                    </div>
+                    <div class="fn__flex-1 kanban-dock-list">
+                        ${this.renderDockBoardList()}
+                    </div>
+                </div>`;
+        }
+
+        this.bindDockEvents();
+    }
+
+    renderDockBoardList() {
+        if (this.boardIndex.boards.length === 0) {
+            return `<div class="kanban-dock-empty">${this.i18n.newBoard}...</div>`;
+        }
+        return this.boardIndex.boards.map(board => `
+            <div class="kanban-dock-item" data-board-id="${board.id}">
+                <svg class="kanban-dock-item-icon"><use xlink:href="#iconKanban"></use></svg>
+                <span class="kanban-dock-item-name">${this.escapeHtml(board.name)}</span>
+                <div class="kanban-dock-item-actions">
+                    <span class="kanban-dock-item-btn kanban-dock-rename" title="${this.i18n.renameBoard}">✎</span>
+                    <span class="kanban-dock-item-btn kanban-dock-delete" title="${this.i18n.deleteBoard}">×</span>
                 </div>
             </div>
-            <div class="kanban-board" id="kanban-board">
-                ${this.renderColumns()}
+        `).join('');
+    }
+
+    bindDockEvents() {
+        if (!this.dockElement) return;
+
+        this.dockElement.querySelector('.kanban-dock-add')?.addEventListener('click', () => {
+            this.showPromptDialog(this.i18n.newBoard, '', (name) => {
+                this.createBoard(name).then(boardId => {
+                    this.openBoard(boardId);
+                });
+            });
+        });
+
+        this.dockElement.querySelectorAll('.kanban-dock-item').forEach(item => {
+            const boardId = item.dataset.boardId;
+            item.addEventListener('click', (e) => {
+                if (!e.target.closest('.kanban-dock-item-actions')) {
+                    this.openBoard(boardId);
+                }
+            });
+        });
+
+        this.dockElement.querySelectorAll('.kanban-dock-rename').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const boardId = e.target.closest('.kanban-dock-item').dataset.boardId;
+                const board = this.boardIndex.boards.find(b => b.id === boardId);
+                if (board) {
+                    this.showPromptDialog(this.i18n.renameBoard, board.name, (newName) => {
+                        this.renameBoard(boardId, newName);
+                    });
+                }
+            });
+        });
+
+        this.dockElement.querySelectorAll('.kanban-dock-delete').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const boardId = e.target.closest('.kanban-dock-item').dataset.boardId;
+                siyuanConfirm("⚠️", this.i18n.confirmDeleteBoard, () => {
+                    this.deleteBoard(boardId);
+                });
+            });
+        });
+    }
+
+    refreshDock() {
+        this.renderDock();
+    }
+
+    // =========== Kanban Panel ===========
+
+    createKanbanPanel(boardId) {
+        const boardInfo = this.boardIndex.boards.find(b => b.id === boardId);
+        const panel = document.createElement('div');
+        panel.className = 'kanban-panel';
+        panel.dataset.boardId = boardId;
+        panel.innerHTML = `
+            <div class="kanban-header">
+                <div class="kanban-title">${this.escapeHtml(boardInfo ? boardInfo.name : this.i18n.kanban)}</div>
+                <div class="kanban-actions">
+                    <button class="kanban-btn add-column-btn">${this.i18n.addColumn}</button>
+                    <button class="kanban-btn reset-board-btn">${this.i18n.resetBoard}</button>
+                </div>
+            </div>
+            <div class="kanban-board">
+                ${this.renderColumns(boardId)}
             </div>
         `;
 
-        panel.querySelector('#add-column-btn').addEventListener('click', () => {
-            this.addColumn();
+        panel.querySelector('.add-column-btn').addEventListener('click', () => {
+            this.addColumn(boardId);
         });
 
-        panel.querySelector('#reset-board-btn').addEventListener('click', () => {
-            this.resetBoard();
+        panel.querySelector('.reset-board-btn').addEventListener('click', () => {
+            this.resetBoard(boardId);
         });
 
-        // 绑定列内的事件
-        this.bindColumnEvents(panel);
+        this.bindColumnEvents(panel, boardId);
 
         return panel;
     }
 
-    renderColumns() {
-        return this.kanbanData.columns.map(column => `
+    renderColumns(boardId) {
+        const boardData = this.getBoardData(boardId);
+        if (!boardData) return '';
+        return boardData.columns.map(column => `
             <div class="kanban-column" data-column-id="${column.id}">
                 <div class="column-header">
                     <span class="column-title">${column.title}</span>
@@ -208,53 +488,51 @@ class KanbanPlugin extends Plugin {
         return div.innerHTML;
     }
 
-    bindColumnEvents(panel) {
-        // 添加任务按钮
+    // =========== Board Event Binding ===========
+
+    bindColumnEvents(panel, boardId) {
         panel.querySelectorAll('.add-task-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const columnId = e.target.dataset.columnId;
-                this.showTaskDialog(columnId);
+                this.showTaskDialog(columnId, null, boardId);
             });
         });
 
-        // 编辑列按钮
         panel.querySelectorAll('.edit-column-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const column = e.target.closest('.kanban-column');
                 const columnId = column.dataset.columnId;
-                this.editColumn(columnId);
+                this.editColumn(columnId, boardId);
             });
         });
 
-        // 删除列按钮
         panel.querySelectorAll('.delete-column-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const column = e.target.closest('.kanban-column');
                 const columnId = column.dataset.columnId;
-                this.deleteColumn(columnId);
+                this.deleteColumn(columnId, boardId);
             });
         });
 
-        // 编辑任务按钮
         panel.querySelectorAll('.edit-task-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const task = e.target.closest('.kanban-task');
                 const taskId = task.dataset.taskId;
-                this.editTask(taskId);
+                this.editTask(taskId, boardId);
             });
         });
 
-        // 删除任务按钮
         panel.querySelectorAll('.delete-task-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const task = e.target.closest('.kanban-task');
                 const taskId = task.dataset.taskId;
-                this.deleteTask(taskId);
+                this.deleteTask(taskId, boardId);
             });
         });
     }
 
     bindDragEvents(panel) {
+        const boardId = panel.dataset.boardId;
         const tasks = panel.querySelectorAll('.kanban-task');
         const columns = panel.querySelectorAll('.column-tasks');
 
@@ -284,50 +562,51 @@ class KanbanPlugin extends Plugin {
                 column.classList.remove('drag-over');
                 const taskId = e.dataTransfer.getData('text/plain');
                 const targetColumnId = column.dataset.columnId;
-                this.moveTask(taskId, targetColumnId);
+                this.moveTask(taskId, targetColumnId, boardId);
             });
         });
     }
 
-    moveTask(taskId, targetColumnId) {
-        let task = null;
-        let sourceColumnId = null;
+    // =========== Board Operations ===========
 
-        // 找到任务并从原列中移除
-        for (const column of this.kanbanData.columns) {
+    refreshBoard(boardId) {
+        const panel = document.querySelector(`.kanban-panel[data-board-id="${boardId}"]`);
+        if (panel) {
+            const board = panel.querySelector('.kanban-board');
+            board.innerHTML = this.renderColumns(boardId);
+            this.bindColumnEvents(panel, boardId);
+            this.bindDragEvents(panel);
+        }
+    }
+
+    moveTask(taskId, targetColumnId, boardId) {
+        const boardData = this.getBoardData(boardId);
+        if (!boardData) return;
+        let task = null;
+
+        for (const column of boardData.columns) {
             const taskIndex = column.tasks.findIndex(t => t.id === taskId);
             if (taskIndex !== -1) {
                 task = column.tasks.splice(taskIndex, 1)[0];
-                sourceColumnId = column.id;
                 break;
             }
         }
 
         if (!task) return;
 
-        // 将任务添加到目标列
-        for (const column of this.kanbanData.columns) {
+        for (const column of boardData.columns) {
             if (column.id === targetColumnId) {
                 column.tasks.push(task);
                 break;
             }
         }
 
-        // 保存并刷新
-        this.saveKanbanData().then(() => this.refreshBoard());
+        this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
     }
 
-    refreshBoard() {
-        const panel = document.querySelector('.kanban-panel');
-        if (panel) {
-            const board = panel.querySelector('#kanban-board');
-            board.innerHTML = this.renderColumns();
-            this.bindColumnEvents(panel);
-            this.bindDragEvents(panel);
-        }
-    }
-
-    showTaskDialog(columnId, task = null) {
+    showTaskDialog(columnId, task, boardId) {
+        const boardData = this.getBoardData(boardId);
+        if (!boardData) return;
         const isEdit = !!task;
         const dialog = document.createElement('div');
         dialog.className = 'kanban-dialog-overlay';
@@ -354,7 +633,7 @@ class KanbanPlugin extends Plugin {
                     <div class="form-group">
                         <label>${this.i18n.column}</label>
                         <select id="task-column">
-                            ${this.kanbanData.columns.map(col => `
+                            ${boardData.columns.map(col => `
                                 <option value="${col.id}" ${col.id === columnId ? 'selected' : ''}>${col.title}</option>
                             `).join('')}
                         </select>
@@ -370,7 +649,6 @@ class KanbanPlugin extends Plugin {
 
         document.body.appendChild(dialog);
 
-        // 绑定事件
         dialog.querySelector('.dialog-close-btn').addEventListener('click', () => dialog.remove());
         dialog.querySelector('.cancel-btn').addEventListener('click', () => dialog.remove());
         dialog.querySelector('.confirm-btn').addEventListener('click', () => {
@@ -379,30 +657,31 @@ class KanbanPlugin extends Plugin {
             const deadline = dialog.querySelector('#task-deadline').value ? new Date(dialog.querySelector('#task-deadline').value).getTime() : null;
 
             if (!title) {
-                alert(this.i18n.pleaseEnterTitle);
+                showMessage(this.i18n.pleaseEnterTitle);
                 return;
             }
 
             if (isEdit) {
-                this.updateTask(task.id, title, description, deadline);
+                this.updateTask(task.id, title, description, deadline, boardId);
                 const newColumnId = dialog.querySelector('#task-column').value;
                 if (newColumnId !== columnId) {
-                    this.moveTaskToColumn(task.id, newColumnId);
+                    this.moveTaskToColumn(task.id, newColumnId, boardId);
                 }
             } else {
-                this.addTask(columnId, title, description, deadline);
+                this.addTask(columnId, title, description, deadline, boardId);
             }
 
             dialog.remove();
         });
 
-        // 点击遮罩关闭
         dialog.addEventListener('click', (e) => {
             if (e.target === dialog) dialog.remove();
         });
     }
 
-    addTask(columnId, title, description, deadline) {
+    addTask(columnId, title, description, deadline, boardId) {
+        const boardData = this.getBoardData(boardId);
+        if (!boardData) return;
         const newTask = {
             id: 'task-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
             title,
@@ -411,18 +690,21 @@ class KanbanPlugin extends Plugin {
             deadline
         };
 
-        for (const column of this.kanbanData.columns) {
+        for (const column of boardData.columns) {
             if (column.id === columnId) {
                 column.tasks.push(newTask);
                 break;
             }
         }
 
-        this.saveKanbanData().then(() => this.refreshBoard());
+        this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
     }
 
-    updateTask(taskId, title, description, deadline) {
-        for (const column of this.kanbanData.columns) {
+    updateTask(taskId, title, description, deadline, boardId) {
+        const boardData = this.getBoardData(boardId);
+        if (!boardData) return;
+
+        for (const column of boardData.columns) {
             const task = column.tasks.find(t => t.id === taskId);
             if (task) {
                 task.title = title;
@@ -432,39 +714,41 @@ class KanbanPlugin extends Plugin {
             }
         }
 
-        this.saveKanbanData().then(() => this.refreshBoard());
+        this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
     }
 
-    moveTaskToColumn(taskId, targetColumnId) {
+    moveTaskToColumn(taskId, targetColumnId, boardId) {
+        const boardData = this.getBoardData(boardId);
+        if (!boardData) return;
         let task = null;
-        let sourceColumnId = null;
 
-        for (const column of this.kanbanData.columns) {
+        for (const column of boardData.columns) {
             const taskIndex = column.tasks.findIndex(t => t.id === taskId);
             if (taskIndex !== -1) {
                 task = column.tasks.splice(taskIndex, 1)[0];
-                sourceColumnId = column.id;
                 break;
             }
         }
 
         if (!task) return;
 
-        for (const column of this.kanbanData.columns) {
+        for (const column of boardData.columns) {
             if (column.id === targetColumnId) {
                 column.tasks.push(task);
                 break;
             }
         }
 
-        this.saveKanbanData().then(() => this.refreshBoard());
+        this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
     }
 
-    editTask(taskId) {
+    editTask(taskId, boardId) {
+        const boardData = this.getBoardData(boardId);
+        if (!boardData) return;
         let task = null;
         let columnId = null;
 
-        for (const column of this.kanbanData.columns) {
+        for (const column of boardData.columns) {
             const foundTask = column.tasks.find(t => t.id === taskId);
             if (foundTask) {
                 task = foundTask;
@@ -474,71 +758,78 @@ class KanbanPlugin extends Plugin {
         }
 
         if (task) {
-            this.showTaskDialog(columnId, task);
+            this.showTaskDialog(columnId, task, boardId);
         }
     }
 
-    deleteTask(taskId) {
-        if (!confirm(this.i18n.confirmDeleteTask)) return;
+    deleteTask(taskId, boardId) {
+        siyuanConfirm("⚠️", this.i18n.confirmDeleteTask, () => {
+            const boardData = this.getBoardData(boardId);
+            if (!boardData) return;
 
-        for (const column of this.kanbanData.columns) {
-            const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-            if (taskIndex !== -1) {
-                column.tasks.splice(taskIndex, 1);
-                break;
+            for (const column of boardData.columns) {
+                const taskIndex = column.tasks.findIndex(t => t.id === taskId);
+                if (taskIndex !== -1) {
+                    column.tasks.splice(taskIndex, 1);
+                    break;
+                }
             }
-        }
 
-        this.saveKanbanData().then(() => this.refreshBoard());
+            this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
+        });
     }
 
-    addColumn() {
-        const title = prompt(this.i18n.enterColumnName);
-        if (!title || !title.trim()) return;
+    addColumn(boardId) {
+        this.showPromptDialog(this.i18n.addColumn, '', (title) => {
+            const boardData = this.getBoardData(boardId);
+            if (!boardData) return;
 
-        const newColumn = {
-            id: 'col-' + Date.now(),
-            title: title.trim(),
-            tasks: []
-        };
+            boardData.columns.push({
+                id: 'col-' + Date.now(),
+                title,
+                tasks: []
+            });
 
-        this.kanbanData.columns.push(newColumn);
-        this.saveKanbanData().then(() => this.refreshBoard());
+            this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
+        });
     }
 
-    editColumn(columnId) {
-        const column = this.kanbanData.columns.find(c => c.id === columnId);
+    editColumn(columnId, boardId) {
+        const boardData = this.getBoardData(boardId);
+        if (!boardData) return;
+        const column = boardData.columns.find(c => c.id === columnId);
         if (!column) return;
 
-        const newTitle = prompt(this.i18n.enterColumnName, column.title);
-        if (!newTitle || !newTitle.trim()) return;
-
-        column.title = newTitle.trim();
-        this.saveKanbanData().then(() => this.refreshBoard());
+        this.showPromptDialog(this.i18n.editColumn, column.title, (newTitle) => {
+            column.title = newTitle;
+            this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
+        });
     }
 
-    deleteColumn(columnId) {
-        if (!confirm(this.i18n.confirmDeleteColumn)) return;
+    deleteColumn(columnId, boardId) {
+        siyuanConfirm("⚠️", this.i18n.confirmDeleteColumn, () => {
+            const boardData = this.getBoardData(boardId);
+            if (!boardData) return;
 
-        const columnIndex = this.kanbanData.columns.findIndex(c => c.id === columnId);
-        if (columnIndex !== -1) {
-            this.kanbanData.columns.splice(columnIndex, 1);
-            this.saveKanbanData().then(() => this.refreshBoard());
-        }
+            const columnIndex = boardData.columns.findIndex(c => c.id === columnId);
+            if (columnIndex !== -1) {
+                boardData.columns.splice(columnIndex, 1);
+                this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
+            }
+        });
     }
 
-    resetBoard() {
-        if (!confirm(this.i18n.confirmReset)) return;
-
-        this.kanbanData = { columns: JSON.parse(JSON.stringify(this.defaultColumns)) };
-        this.saveKanbanData().then(() => this.refreshBoard());
+    resetBoard(boardId) {
+        siyuanConfirm("⚠️", this.i18n.confirmReset, () => {
+            const defaultData = { columns: JSON.parse(JSON.stringify(this.defaultColumns)) };
+            this.boards.set(boardId, defaultData);
+            this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
+        });
     }
 
     onunload() {
         console.log('Kanban plugin unloaded');
     }
-
 }
 
-// 导出插件类，让思源笔记在运行时实例化
 export default KanbanPlugin;
