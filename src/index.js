@@ -60,7 +60,7 @@ class KanbanPlugin extends Plugin {
                 size: { width: 220, height: 0 },
                 icon: "iconKanban",
                 title: this.i18n.kanban,
-                hotkey: "⌥⌘K",
+                hotkey: "",
             },
             data: {},
             type: DOCK_TYPE,
@@ -70,16 +70,6 @@ class KanbanPlugin extends Plugin {
             },
             destroy: () => {
                 this.dockElement = null;
-            }
-        });
-
-        this.addCommand({
-            langKey: "openKanban",
-            hotkey: '⌘⇧K',
-            callback: () => {
-                if (this.boardIndex.boards.length > 0) {
-                    this.openBoard(this.boardIndex.boards[0].id);
-                }
             }
         });
 

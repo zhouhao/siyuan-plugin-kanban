@@ -20,7 +20,6 @@
     "confirmDeleteColumn": "Are you sure you want to delete this column?",
     "confirmReset": "Are you sure you want to reset the board? All data will be lost!",
     "enterColumnName": "Enter column name",
-    "openKanban": "Open Kanban",
     "newBoard": "New Board",
     "enterBoardName": "Enter board name",
     "renameBoard": "Rename",
