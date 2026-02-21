@@ -219,6 +219,17 @@
     cursor: grabbing;
 }
 
+.kanban-task.task-done .task-title {
+    text-decoration: line-through;
+    color: var(--kanban-text-secondary);
+}
+
+.kanban-task.task-done .task-description {
+    text-decoration: line-through;
+    color: var(--kanban-text-secondary);
+    opacity: 0.6;
+}
+
 .task-title {
     font-weight: 500;
     color: var(--kanban-text);

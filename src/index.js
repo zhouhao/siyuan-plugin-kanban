@@ -157,19 +157,20 @@ class KanbanPlugin extends Plugin {
                     </div>
                 </div>
                 <div class="column-tasks" data-column-id="${column.id}">
-                    ${column.tasks.map(task => this.renderTask(task)).join('')}
+                    ${column.tasks.map(task => this.renderTask(task, column.id)).join('')}
                 </div>
                 <button class="add-task-btn" data-column-id="${column.id}">+ ${this.i18n.addTask}</button>
             </div>
         `).join('');
     }
 
-    renderTask(task) {
+    renderTask(task, columnId) {
         const deadlineClass = this.getDeadlineClass(task.deadline);
         const deadlineText = task.deadline ? this.formatDate(task.deadline) : '';
+        const doneClass = columnId === 'done' ? ' task-done' : '';
 
         return `
-            <div class="kanban-task" data-task-id="${task.id}" draggable="true">
+            <div class="kanban-task${doneClass}" data-task-id="${task.id}" draggable="true">
                 <div class="task-title">${this.escapeHtml(task.title)}</div>
                 ${task.description ? `<div class="task-description">${this.escapeHtml(task.description)}</div>` : ''}
                 <div class="task-meta">
