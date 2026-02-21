@@ -1,0 +1,26 @@
+{
+  "name": "siyuan-plugin-kanban",
+  "author": "MiniMax Agent",
+  "url": "https://github.com/minimax/siyuan-plugin-kanban",
+  "version": "0.1.0",
+  "minAppVersion": "3.0.0",
+  "backends": ["all"],
+  "frontends": ["all"],
+  "disabledInPublish": false,
+  "displayName": {
+    "default": "Simple Kanban",
+    "zh_CN": "简单看板"
+  },
+  "description": {
+    "default": "A simple Kanban board plugin for Siyuan Note",
+    "zh_CN": "思源笔记简单看板插件"
+  },
+  "readme": {
+    "default": "README.md",
+    "zh_CN": "README_zh_CN.md"
+  },
+  "funding": {
+    "custom": []
+  },
+  "keywords": ["kanban", "board", "task", "management"]
+}
