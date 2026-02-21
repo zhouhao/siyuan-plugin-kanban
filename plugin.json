@@ -1,8 +1,8 @@
 {
   "name": "siyuan-plugin-kanban",
-  "author": "MiniMax Agent",
-  "url": "https://github.com/minimax/siyuan-plugin-kanban",
-  "version": "0.1.0",
+  "author": "Hao Zhou",
+  "url": "https://github.com/zhouhao/siyuan-plugin-kanban",
+  "version": "0.1.1",
   "minAppVersion": "3.0.0",
   "backends": ["all"],
   "frontends": ["all"],
