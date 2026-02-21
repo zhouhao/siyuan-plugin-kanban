@@ -5,8 +5,7 @@ const ZipWebpackPlugin = require('zip-webpack-plugin');
 
 module.exports = {
     entry: {
-        index: './src/index.js',
-        'index.css': './src/index.css'
+        index: './src/index.js'
     },
     output: {
         filename: '[name].js',
