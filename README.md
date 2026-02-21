@@ -51,11 +51,6 @@ A simple Kanban board plugin for SiYuan Note that helps you manage tasks visuall
 - **Deadline**: Due date (optional, color-coded display)
 - **Created**: Auto-generated timestamp
 
-## Keyboard Shortcuts
-
-- `⌘⇧K` (Mac) / `Ctrl+Shift+K` (Windows): Open the first kanban board
-- `⌥⌘K` (Mac): Toggle the dock sidebar
-
 ## Data Storage
 
 Each board is stored separately under `data/storage/petal/siyuan-plugin-kanban/`:

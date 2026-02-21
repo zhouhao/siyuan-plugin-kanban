@@ -51,11 +51,6 @@
 - **截止日期**：截止日期（可选，颜色编码显示）
 - **创建时间**：自动生成的时间戳
 
-## 快捷键
-
-- `⌘⇧K` (Mac) / `Ctrl+Shift+K` (Windows)：打开第一个看板
-- `⌥⌘K` (Mac)：切换侧边栏面板
-
 ## 数据存储
 
 每个看板独立存储在 `data/storage/petal/siyuan-plugin-kanban/` 下：
