@@ -687,39 +687,30 @@
     color: #f44336;
 }
 
-.attachment-add-row {
+.attachment-upload-zone {
     display: flex;
-    gap: 8px;
     align-items: center;
-}
-
-.attachment-input {
-    flex: 1;
-    padding: 8px 10px;
-    border: 1px solid var(--kanban-border);
+    justify-content: center;
+    padding: 16px;
+    border: 2px dashed var(--kanban-border);
     border-radius: 6px;
     background: var(--kanban-bg);
-    color: var(--kanban-text);
-    font-size: 13px;
-    font-family: inherit;
+    cursor: pointer;
     transition: all 0.2s ease;
-    box-sizing: border-box;
-    min-width: 0;
 }
 
-.attachment-input:focus {
-    outline: none;
+.attachment-upload-zone:hover,
+.attachment-upload-zone.drag-over {
     border-color: var(--kanban-primary);
-    box-shadow: 0 0 0 3px var(--kanban-primary-light);
+    background: var(--kanban-primary-light);
 }
 
-.attachment-input-url {
-    flex: 2;
+.attachment-upload-zone.uploading {
+    opacity: 0.6;
+    pointer-events: none;
 }
 
-.attachment-add-btn {
-    padding: 8px 12px;
-    font-size: 16px;
-    line-height: 1;
-    flex-shrink: 0;
+.attachment-upload-text {
+    font-size: 13px;
+    color: var(--kanban-text-secondary);
 }

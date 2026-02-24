@@ -27,11 +27,9 @@
     "confirmDeleteBoard": "Are you sure you want to delete \"${name}\"? All tasks will be lost!",
     "defaultBoardName": "My Kanban",
     "attachments": "Attachments",
-    "addAttachment": "Add Attachment",
-    "attachmentName": "Name",
-    "attachmentUrl": "URL",
-    "attachmentNamePlaceholder": "Attachment name",
-    "attachmentUrlPlaceholder": "Enter URL",
+    "uploadAttachment": "Click or drag to upload",
+    "uploading": "Uploading...",
+    "uploadFailed": "Upload failed",
     "removeAttachment": "Remove",
     "attachmentCount": "attachment(s)"
 }

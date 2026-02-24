@@ -641,10 +641,9 @@ class KanbanPlugin extends Plugin {
                     <div class="form-group">
                         <label>${this.i18n.attachments}</label>
                         <div class="attachment-list" id="attachment-list"></div>
-                        <div class="attachment-add-row">
-                            <input type="text" id="attachment-name-input" placeholder="${this.i18n.attachmentNamePlaceholder}" class="attachment-input">
-                            <input type="text" id="attachment-url-input" placeholder="${this.i18n.attachmentUrlPlaceholder}" class="attachment-input attachment-input-url">
-                            <button class="kanban-btn attachment-add-btn" id="attachment-add-btn">+</button>
+                        <div class="attachment-upload-zone" id="attachment-upload-zone">
+                            <input type="file" id="attachment-file-input" multiple style="display:none">
+                            <span class="attachment-upload-text">${this.i18n.uploadAttachment}</span>
                         </div>
                     </div>
                     ${isEdit ? `
@@ -669,20 +668,33 @@ class KanbanPlugin extends Plugin {
 
         const attachmentList = dialog.querySelector('#attachment-list');
         const attachments = existingAttachments;
+        const uploadZone = dialog.querySelector('#attachment-upload-zone');
+        const fileInput = dialog.querySelector('#attachment-file-input');
+        const uploadText = dialog.querySelector('.attachment-upload-text');
+
+        const getFileIcon = (name) => {
+            const ext = name.split('.').pop().toLowerCase();
+            const map = {
+                pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊',
+                ppt: '📽', pptx: '📽', zip: '📦', rar: '📦', '7z': '📦',
+                png: '🖼', jpg: '🖼', jpeg: '🖼', gif: '🖼', svg: '🖼', webp: '🖼',
+                mp3: '🎵', wav: '🎵', mp4: '🎬', mov: '🎬', txt: '📃', md: '📃'
+            };
+            return map[ext] || '📎';
+        };
 
         const renderAttachments = () => {
             attachmentList.innerHTML = attachments.map((att, idx) => `
                 <div class="attachment-item" data-idx="${idx}">
-                    <span class="attachment-icon">📎</span>
-                    <a class="attachment-link" href="${this.escapeHtml(att.url)}" target="_blank" title="${this.escapeHtml(att.url)}">${this.escapeHtml(att.name)}</a>
+                    <span class="attachment-icon">${getFileIcon(att.name)}</span>
+                    <a class="attachment-link" href="${this.escapeHtml(att.path)}" target="_blank" title="${this.escapeHtml(att.name)}">${this.escapeHtml(att.name)}</a>
                     <button class="attachment-remove-btn" data-idx="${idx}" title="${this.i18n.removeAttachment}">×</button>
                 </div>
             `).join('');
 
             attachmentList.querySelectorAll('.attachment-remove-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    const removeIdx = parseInt(e.target.dataset.idx);
-                    attachments.splice(removeIdx, 1);
+                    attachments.splice(parseInt(e.target.dataset.idx), 1);
                     renderAttachments();
                 });
             });
@@ -690,31 +702,58 @@ class KanbanPlugin extends Plugin {
 
         renderAttachments();
 
-        const addAttachmentBtn = dialog.querySelector('#attachment-add-btn');
-        const attachNameInput = dialog.querySelector('#attachment-name-input');
-        const attachUrlInput = dialog.querySelector('#attachment-url-input');
+        const uploadFiles = async (files) => {
+            if (!files || files.length === 0) return;
+            uploadText.textContent = this.i18n.uploading;
+            uploadZone.classList.add('uploading');
 
-        const doAddAttachment = () => {
-            const name = attachNameInput.value.trim();
-            const url = attachUrlInput.value.trim();
-            if (!url) return;
-            attachments.push({
-                id: 'att-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-                name: name || url,
-                url,
-                addedAt: Date.now()
-            });
-            attachNameInput.value = '';
-            attachUrlInput.value = '';
+            for (const file of files) {
+                try {
+                    const formData = new FormData();
+                    formData.append('assetsDirPath', '/assets/');
+                    formData.append('file[]', file);
+
+                    const resp = await fetch('/api/asset/upload', { method: 'POST', body: formData });
+                    const result = await resp.json();
+
+                    if (result.code === 0 && result.data && result.data.succMap) {
+                        const succMap = result.data.succMap;
+                        for (const [originalName, assetPath] of Object.entries(succMap)) {
+                            attachments.push({
+                                id: 'att-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                                name: originalName,
+                                path: assetPath,
+                                addedAt: Date.now()
+                            });
+                        }
+                    } else {
+                        showMessage(this.i18n.uploadFailed + ': ' + file.name);
+                    }
+                } catch (e) {
+                    showMessage(this.i18n.uploadFailed + ': ' + file.name);
+                }
+            }
+
+            uploadText.textContent = this.i18n.uploadAttachment;
+            uploadZone.classList.remove('uploading');
+            fileInput.value = '';
             renderAttachments();
         };
 
-        addAttachmentBtn.addEventListener('click', doAddAttachment);
-        attachUrlInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                doAddAttachment();
-            }
+        uploadZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-over');
+        });
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('drag-over');
+        });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-over');
+            uploadFiles(e.dataTransfer.files);
         });
 
         dialog.querySelector('.dialog-close-btn').addEventListener('click', () => dialog.remove());
