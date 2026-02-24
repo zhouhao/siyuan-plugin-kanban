@@ -25,5 +25,13 @@
     "renameBoard": "Rename",
     "deleteBoard": "Delete",
     "confirmDeleteBoard": "Are you sure you want to delete \"${name}\"? All tasks will be lost!",
-    "defaultBoardName": "My Kanban"
+    "defaultBoardName": "My Kanban",
+    "attachments": "Attachments",
+    "addAttachment": "Add Attachment",
+    "attachmentName": "Name",
+    "attachmentUrl": "URL",
+    "attachmentNamePlaceholder": "Attachment name",
+    "attachmentUrlPlaceholder": "Enter URL",
+    "removeAttachment": "Remove",
+    "attachmentCount": "attachment(s)"
 }

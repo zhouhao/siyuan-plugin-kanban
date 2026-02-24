@@ -618,3 +618,108 @@
     color: var(--kanban-text-secondary);
     font-size: 13px;
 }
+
+/* 附件徽章（任务卡片上） */
+.task-attachment-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--kanban-primary-light);
+    color: var(--kanban-primary);
+    font-weight: 500;
+}
+
+/* 附件列表（对话框内） */
+.attachment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--kanban-bg);
+    border: 1px solid var(--kanban-border);
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.attachment-icon {
+    flex-shrink: 0;
+    font-size: 14px;
+}
+
+.attachment-link {
+    flex: 1;
+    color: var(--kanban-primary);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachment-link:hover {
+    text-decoration: underline;
+}
+
+.attachment-remove-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--kanban-text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.attachment-remove-btn:hover {
+    background: #ffebee;
+    color: #f44336;
+}
+
+.attachment-add-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.attachment-input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid var(--kanban-border);
+    border-radius: 6px;
+    background: var(--kanban-bg);
+    color: var(--kanban-text);
+    font-size: 13px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.attachment-input:focus {
+    outline: none;
+    border-color: var(--kanban-primary);
+    box-shadow: 0 0 0 3px var(--kanban-primary-light);
+}
+
+.attachment-input-url {
+    flex: 2;
+}
+
+.attachment-add-btn {
+    padding: 8px 12px;
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+}

@@ -25,5 +25,13 @@
     "renameBoard": "重命名",
     "deleteBoard": "删除",
     "confirmDeleteBoard": "确定要删除「${name}」吗？所有任务都将丢失！",
-    "defaultBoardName": "我的看板"
+    "defaultBoardName": "我的看板",
+    "attachments": "附件",
+    "addAttachment": "添加附件",
+    "attachmentName": "名称",
+    "attachmentUrl": "链接",
+    "attachmentNamePlaceholder": "附件名称",
+    "attachmentUrlPlaceholder": "输入链接地址",
+    "removeAttachment": "移除",
+    "attachmentCount": "个附件"
 }

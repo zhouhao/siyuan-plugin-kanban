@@ -454,6 +454,7 @@ class KanbanPlugin extends Plugin {
         const deadlineClass = this.getDeadlineClass(task.deadline);
         const deadlineText = task.deadline ? this.formatDate(task.deadline) : '';
         const doneClass = columnId === 'done' ? ' task-done' : '';
+        const attachmentCount = (task.attachments && task.attachments.length) || 0;
 
         return `
             <div class="kanban-task${doneClass}" data-task-id="${task.id}" draggable="true">
@@ -461,6 +462,7 @@ class KanbanPlugin extends Plugin {
                 ${task.description ? `<div class="task-description">${this.escapeHtml(task.description)}</div>` : ''}
                 <div class="task-meta">
                     ${deadlineText ? `<span class="task-deadline ${deadlineClass}">${deadlineText}</span>` : ''}
+                    ${attachmentCount > 0 ? `<span class="task-attachment-badge">📎 ${attachmentCount}</span>` : ''}
                     <span class="task-created">${this.formatDate(task.createdAt)}</span>
                 </div>
                 <div class="task-actions">
@@ -614,6 +616,7 @@ class KanbanPlugin extends Plugin {
         const boardData = this.getBoardData(boardId);
         if (!boardData) return;
         const isEdit = !!task;
+        const existingAttachments = (task && task.attachments) ? JSON.parse(JSON.stringify(task.attachments)) : [];
         const dialog = document.createElement('div');
         dialog.className = 'kanban-dialog-overlay';
         dialog.innerHTML = `
@@ -635,6 +638,15 @@ class KanbanPlugin extends Plugin {
                         <label>${this.i18n.deadline}</label>
                         <input type="date" id="task-deadline" value="${task && task.deadline ? new Date(task.deadline).toISOString().split('T')[0] : ''}">
                     </div>
+                    <div class="form-group">
+                        <label>${this.i18n.attachments}</label>
+                        <div class="attachment-list" id="attachment-list"></div>
+                        <div class="attachment-add-row">
+                            <input type="text" id="attachment-name-input" placeholder="${this.i18n.attachmentNamePlaceholder}" class="attachment-input">
+                            <input type="text" id="attachment-url-input" placeholder="${this.i18n.attachmentUrlPlaceholder}" class="attachment-input attachment-input-url">
+                            <button class="kanban-btn attachment-add-btn" id="attachment-add-btn">+</button>
+                        </div>
+                    </div>
                     ${isEdit ? `
                     <div class="form-group">
                         <label>${this.i18n.column}</label>
@@ -655,6 +667,56 @@ class KanbanPlugin extends Plugin {
 
         document.body.appendChild(dialog);
 
+        const attachmentList = dialog.querySelector('#attachment-list');
+        const attachments = existingAttachments;
+
+        const renderAttachments = () => {
+            attachmentList.innerHTML = attachments.map((att, idx) => `
+                <div class="attachment-item" data-idx="${idx}">
+                    <span class="attachment-icon">📎</span>
+                    <a class="attachment-link" href="${this.escapeHtml(att.url)}" target="_blank" title="${this.escapeHtml(att.url)}">${this.escapeHtml(att.name)}</a>
+                    <button class="attachment-remove-btn" data-idx="${idx}" title="${this.i18n.removeAttachment}">×</button>
+                </div>
+            `).join('');
+
+            attachmentList.querySelectorAll('.attachment-remove-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const removeIdx = parseInt(e.target.dataset.idx);
+                    attachments.splice(removeIdx, 1);
+                    renderAttachments();
+                });
+            });
+        };
+
+        renderAttachments();
+
+        const addAttachmentBtn = dialog.querySelector('#attachment-add-btn');
+        const attachNameInput = dialog.querySelector('#attachment-name-input');
+        const attachUrlInput = dialog.querySelector('#attachment-url-input');
+
+        const doAddAttachment = () => {
+            const name = attachNameInput.value.trim();
+            const url = attachUrlInput.value.trim();
+            if (!url) return;
+            attachments.push({
+                id: 'att-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+                name: name || url,
+                url,
+                addedAt: Date.now()
+            });
+            attachNameInput.value = '';
+            attachUrlInput.value = '';
+            renderAttachments();
+        };
+
+        addAttachmentBtn.addEventListener('click', doAddAttachment);
+        attachUrlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                doAddAttachment();
+            }
+        });
+
         dialog.querySelector('.dialog-close-btn').addEventListener('click', () => dialog.remove());
         dialog.querySelector('.cancel-btn').addEventListener('click', () => dialog.remove());
         dialog.querySelector('.confirm-btn').addEventListener('click', () => {
@@ -668,13 +730,13 @@ class KanbanPlugin extends Plugin {
             }
 
             if (isEdit) {
-                this.updateTask(task.id, title, description, deadline, boardId);
+                this.updateTask(task.id, title, description, deadline, boardId, attachments);
                 const newColumnId = dialog.querySelector('#task-column').value;
                 if (newColumnId !== columnId) {
                     this.moveTaskToColumn(task.id, newColumnId, boardId);
                 }
             } else {
-                this.addTask(columnId, title, description, deadline, boardId);
+                this.addTask(columnId, title, description, deadline, boardId, attachments);
             }
 
             dialog.remove();
@@ -685,7 +747,7 @@ class KanbanPlugin extends Plugin {
         });
     }
 
-    addTask(columnId, title, description, deadline, boardId) {
+    addTask(columnId, title, description, deadline, boardId, attachments) {
         const boardData = this.getBoardData(boardId);
         if (!boardData) return;
         const newTask = {
@@ -693,7 +755,8 @@ class KanbanPlugin extends Plugin {
             title,
             description,
             createdAt: Date.now(),
-            deadline
+            deadline,
+            attachments: attachments || []
         };
 
         for (const column of boardData.columns) {
@@ -706,7 +769,7 @@ class KanbanPlugin extends Plugin {
         this.saveBoardData(boardId).then(() => this.refreshBoard(boardId));
     }
 
-    updateTask(taskId, title, description, deadline, boardId) {
+    updateTask(taskId, title, description, deadline, boardId, attachments) {
         const boardData = this.getBoardData(boardId);
         if (!boardData) return;
 
@@ -716,6 +779,7 @@ class KanbanPlugin extends Plugin {
                 task.title = title;
                 task.description = description;
                 task.deadline = deadline;
+                task.attachments = attachments || [];
                 break;
             }
         }
