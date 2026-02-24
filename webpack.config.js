@@ -1,6 +1,7 @@
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const ZipWebpackPlugin = require('zip-webpack-plugin');
 
 module.exports = {
     entry: {
@@ -48,6 +49,10 @@ module.exports = {
                 { from: 'README.md', to: 'README.md' },
                 { from: 'README_zh_CN.md', to: 'README_zh_CN.md' }
             ]
+        }),
+        new ZipWebpackPlugin({
+            filename: 'package.zip',
+            path: path.resolve(__dirname)
         })
     ]
 };
