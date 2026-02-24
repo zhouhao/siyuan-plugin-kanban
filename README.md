@@ -9,7 +9,7 @@ A simple Kanban board plugin for SiYuan Note that helps you manage tasks visuall
 - **Tab Integration**: Each board opens in its own SiYuan tab
 - **Default Columns**: Four default columns - Todo, In Progress, Blocked, Done
 - **Custom Columns**: Add, rename, and delete columns as needed
-- **Task Management**: Create, edit, and delete tasks with title, description, and deadline
+- **Task Management**: Create, edit, and delete tasks with title, description, deadline, and file attachments
 - **Drag and Drop**: Move tasks between columns by dragging
 - **Done State**: Tasks in the "Done" column are visually distinguished with strikethrough styling
 - **Deadline Visualization**: Color-coded deadline badges (normal, soon, urgent, overdue)
@@ -49,6 +49,7 @@ A simple Kanban board plugin for SiYuan Note that helps you manage tasks visuall
 - **Title**: Task title (required)
 - **Description**: Task description (optional, supports multi-line text)
 - **Deadline**: Due date (optional, color-coded display)
+- **Attachments**: File attachments (optional, uploaded to `data/assets/` via drag-and-drop or file picker)
 - **Created**: Auto-generated timestamp
 
 ## Data Storage
